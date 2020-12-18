@@ -61,9 +61,7 @@ flags.DEFINE_integer('num_images', 5000,
 class EvalCkptDriver(utils.EvalCkptDriver):
   """A driver for running eval inference."""
 
-  def build_model(self, features, is_training):
-    print("hello1")
-    
+  def build_model(self, features, is_training):    
     """Build model with input features."""
     tf.logging.info(self.model_name)
     model_builder = model_builder_factory.get_model_builder(self.model_name)
@@ -119,8 +117,6 @@ def main(unused_argv):
                                FLAGS.labels_map_file, FLAGS.enable_ema,
                                FLAGS.export_ckpt)
   elif FLAGS.runmode == 'imagenet':
-    print("hello")
-    exit()
     # Run inference for imagenet.
     driver.eval_imagenet(FLAGS.ckpt_dir, FLAGS.imagenet_eval_glob,
                          FLAGS.imagenet_eval_label, FLAGS.num_images,

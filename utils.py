@@ -463,7 +463,6 @@ class EvalCkptDriver(object):
                         'evaluated.')
     filenames = tf.constant(filenames)
 
-
     labels = tf.constant(labels)
     dataset = tf.data.Dataset.from_tensor_slices((filenames, labels))
 
@@ -555,24 +554,29 @@ class EvalCkptDriver(object):
       interpreter = tf.lite.Interpreter(model_path=tflite_path)
       interpreter.allocate_tensors()
       input_details = interpreter.get_input_details()[0]
+      input_scale, input_zero_point = input_details["quantization"]
+
       output_details = interpreter.get_output_details()
 
-      '''
-      normalize for fp
-      cur_img -= 127.0
-      cur_img/= 128.0
-      '''
       top1_cnt, top5_cnt = 0.0, 0.0
       with tf.Graph().as_default(), tf.Session() as sess:
         imgs,_ =self.build_dataset(image_files, labels, False)
-        for i in tqdm(range(len(image_files) // self.batch_size)):
-          if 'fp32' in tflite_path:
-              cur_img = np.array(imgs.eval(),dtype=np.float32)
-              cur_img -= 127.0
-              cur_img/= 128.0
-          elif 'int8' in tflite_path:
-            cur_img = np.array(imgs.eval(),dtype=np.uint8)
 
+        for i in tqdm(range(len(image_files) // self.batch_size)):
+          '''
+          float32 read in, normalize
+          '''
+          cur_img = np.array(imgs.eval())
+          cur_img -= 127.0
+          cur_img/= 128.0
+          
+          '''
+          rescale float32 to uint8
+          '''
+          if input_details['dtype'] == np.uint8:
+            cur_img = cur_img/input_scale + input_zero_point          
+            cur_img = np.array(cur_img,input_details["dtype"])
+    
           interpreter.set_tensor(input_details['index'], cur_img)
           interpreter.invoke()
           probs = interpreter.get_tensor(output_details[0]['index'])
@@ -586,7 +590,6 @@ class EvalCkptDriver(object):
             sys.stdout.flush()
 
       return top1_cnt,top5_cnt
-
 
 
   def eval_imagenet(self, ckpt_dir, imagenet_eval_glob,

@@ -555,9 +555,7 @@ class EvalCkptDriver(object):
       interpreter.allocate_tensors()
       input_details = interpreter.get_input_details()[0]
       input_scale, input_zero_point = input_details["quantization"]
-
       output_details = interpreter.get_output_details()
-
       top1_cnt, top5_cnt = 0.0, 0.0
       with tf.Graph().as_default(), tf.Session() as sess:
         imgs,_ =self.build_dataset(image_files, labels, False)
@@ -571,12 +569,12 @@ class EvalCkptDriver(object):
           cur_img/= 128.0
           
           '''
-          rescale float32 to uint8
+          rescale to qunatize input 
           '''
           if input_details['dtype'] == np.uint8:
-            cur_img = cur_img/input_scale + input_zero_point          
+            cur_img = cur_img/input_scale + input_zero_point   
             cur_img = np.array(cur_img,input_details["dtype"])
-    
+            
           interpreter.set_tensor(input_details['index'], cur_img)
           interpreter.invoke()
           probs = interpreter.get_tensor(output_details[0]['index'])
